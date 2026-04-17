@@ -19,49 +19,64 @@ const VERSION = process.env.CURRENT_VERSION || '1.0.0';
 app.use(helmet());
 
 // CORS
-const frontendPort = String(process.env.FRONTEND_PORT || '3000');
-const configuredOrigins = [process.env.FRONTEND_URL, process.env.FRONTEND_URLS]
-  .filter(Boolean)
-  .flatMap((value) => value.split(','))
-  .map((value) => value.trim())
-  .filter(Boolean);
-const defaultOrigins = [`http://localhost:${frontendPort}`, `http://127.0.0.1:${frontendPort}`];
-const normalizeOrigin = (value) => {
+const frontendPort = process.env.FRONTEND_PORT || '3000';
+const configuredOrigins = [
+  process.env.FRONTEND_URL?.trim(),
+  ...(process.env.FRONTEND_URLS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+].filter(Boolean);
+const defaultOrigins = [
+  `http://localhost:${frontendPort}`,
+  `http://127.0.0.1:${frontendPort}`,
+  `https://localhost:${frontendPort}`,
+  `https://127.0.0.1:${frontendPort}`,
+];
+const parseOrigin = (value) => {
   try {
-    return new URL(value).origin;
+    return new URL(value);
   } catch (_err) {
     return null;
   }
 };
 const allowedOrigins = new Set(
   [...defaultOrigins, ...configuredOrigins]
-    .map((origin) => normalizeOrigin(origin))
+    .map((origin) => parseOrigin(origin)?.origin)
     .filter(Boolean)
 );
-const isPrivateIpv4 = (hostname) =>
-  /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})$/.test(
-    hostname
-  );
-const isAllowedPrivateNetworkOrigin = (origin) => {
-  try {
-    const parsed = new URL(origin);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return false;
-    }
-    const resolvedPort = parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
-    return isPrivateIpv4(parsed.hostname) && resolvedPort === frontendPort;
-  } catch (_err) {
+const isPrivateIpv4 = (hostname) => {
+  const parts = hostname.split('.');
+  if (parts.length !== 4 || parts.some((part) => !/^\d+$/.test(part))) {
     return false;
   }
+  const octets = parts.map((part) => Number(part));
+  if (octets.some((value) => value > 255)) {
+    return false;
+  }
+  return (
+    octets[0] === 10 ||
+    (octets[0] === 192 && octets[1] === 168) ||
+    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+  );
+};
+const isAllowedPrivateNetworkOrigin = (parsedOrigin) => {
+  if (!parsedOrigin || !['http:', 'https:'].includes(parsedOrigin.protocol)) {
+    return false;
+  }
+  const resolvedPort =
+    parsedOrigin.port === '' ? (parsedOrigin.protocol === 'https:' ? '443' : '80') : parsedOrigin.port;
+  return isPrivateIpv4(parsedOrigin.hostname) && resolvedPort === frontendPort;
 };
 app.use(
   cors({
     origin: (origin, callback) => {
-      const normalizedOrigin = normalizeOrigin(origin);
+      const parsedOrigin = parseOrigin(origin);
+      const normalizedOrigin = parsedOrigin?.origin;
       if (
         !origin ||
         (normalizedOrigin && allowedOrigins.has(normalizedOrigin)) ||
-        isAllowedPrivateNetworkOrigin(origin)
+        isAllowedPrivateNetworkOrigin(parsedOrigin)
       ) {
         callback(null, true);
       } else {
