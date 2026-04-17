@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { User, Mail, Lock, UserPlus } from 'lucide-react'
-import axios from 'axios'
+import api from '../services/api.js'
+import { getApiErrorMessage } from '../utils/authErrors.js'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
@@ -16,24 +17,27 @@ export default function RegisterPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match.')
       return
     }
+
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters.')
       return
     }
+
     setLoading(true)
     try {
-      await axios.post('/api/auth/register', {
+      await api.post('/auth/register', {
         name: form.name,
         email: form.email,
-        password: form.password
+        password: form.password,
       })
-      navigate('/login', { state: { registered: true } })
+      navigate('/login', { state: { registered: true }, replace: true })
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.')
+      setError(getApiErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {
       setLoading(false)
     }
