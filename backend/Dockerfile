@@ -1,0 +1,15 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY src/ ./src/
+COPY .env.example ./
+
+RUN mkdir -p data
+
+EXPOSE 5000
+
+CMD ["node", "src/server.js"]
