@@ -4,9 +4,9 @@
 # Support both the Compose plugin (Docker ≥ 24) and the standalone binary.
 COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || (docker-compose version > /dev/null 2>&1 && echo "docker-compose" || (echo "ERROR: Neither 'docker compose' nor 'docker-compose' found. Install Docker >= 24." >&2; exit 1)))
 
-.PHONY: build up down restart logs clean check-update update \
+.PHONY: build up down restart logs clean uninstall check-update update \
         apt-build apt-install apt-check apt-update \
-        duck-demo shell-backend shell-frontend help
+        duck-demo install shell-backend shell-frontend help
 
 ## ── Docker ──────────────────────────────────────────────────────────────────
 
@@ -16,11 +16,17 @@ build:
 
 # Start all services in the background
 up:
-	$(COMPOSE) up -d
+	@BACKEND_PORT="$$(bash scripts/select-backend-port.sh)"; \
+	echo "🦆 Using backend host port $$BACKEND_PORT"; \
+	BACKEND_PORT="$$BACKEND_PORT" $(COMPOSE) up -d
 
 # Stop all services
 down:
 	$(COMPOSE) down
+
+# Uninstall local Docker deployment (stops and removes stack + volumes)
+uninstall:
+	$(COMPOSE) down -v --remove-orphans
 
 # Restart all services
 restart:
@@ -68,6 +74,10 @@ apt-update:
 duck-demo:
 	bash scripts/duck-installer.sh --demo
 
+# Run the duck installer
+install:
+	bash scripts/duck-installer.sh
+
 ## ── Debug shells ─────────────────────────────────────────────────────────────
 
 # Open a shell inside the running backend container
@@ -88,6 +98,7 @@ help:
 	@echo "    make build          Build all Docker images"
 	@echo "    make up             Start all services (detached)"
 	@echo "    make down           Stop all services"
+	@echo "    make uninstall      Stop and remove services + volumes"
 	@echo "    make restart        Restart all services"
 	@echo "    make logs           Tail logs (Ctrl-C to exit)"
 	@echo "    make clean          Full reset (removes volumes + images)"
@@ -103,6 +114,7 @@ help:
 	@echo "    make apt-update     Trigger APT update (API)"
 	@echo ""
 	@echo "  Duck installer"
+	@echo "    make install        Run the duck installer"
 	@echo "    make duck-demo      Show duck animations"
 	@echo ""
 	@echo "  Shells"

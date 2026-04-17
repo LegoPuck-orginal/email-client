@@ -6,12 +6,16 @@ set -euo pipefail
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+WHITE='\033[1;37m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HEALTH_URL="http://localhost:5000/api/health"
+PORT_SCANNER="${REPO_ROOT}/scripts/select-backend-port.sh"
+BACKEND_PORT=5000
+HEALTH_URL=""
 MAX_RETRIES=12
 RETRY_INTERVAL=5
 
@@ -31,6 +35,13 @@ info()    { echo -e "${CYAN}[INFO]  $*${RESET}"; }
 success() { echo -e "${GREEN}[OK]    $*${RESET}"; }
 warn()    { echo -e "${YELLOW}[WARN]  $*${RESET}"; }
 error()   { echo -e "${RED}[ERROR] $*${RESET}" >&2; exit 1; }
+
+section() {
+    echo ""
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+    echo -e "${BOLD}${WHITE}  $*${RESET}"
+    echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+}
 
 duck_say() {
     local msg="$1"
@@ -83,19 +94,30 @@ setup_env() {
     fi
 }
 
+select_backend_port() {
+    if [ ! -x "$PORT_SCANNER" ]; then
+        error "Port scanner script not executable: ${PORT_SCANNER}"
+    fi
+    BACKEND_PORT="$("$PORT_SCANNER")"
+    HEALTH_URL="http://localhost:${BACKEND_PORT}/api/health"
+    success "Selected backend host port: ${BACKEND_PORT}"
+}
+
 # ── Docker build & up ─────────────────────────────────────────────────────────
 
 build_and_start() {
+    section "Building and starting containers"
     info "Building Docker images..."
     $COMPOSE_CMD -f "${REPO_ROOT}/docker-compose.yml" build
 
     info "Starting services..."
-    $COMPOSE_CMD -f "${REPO_ROOT}/docker-compose.yml" up -d
+    BACKEND_PORT="${BACKEND_PORT}" $COMPOSE_CMD -f "${REPO_ROOT}/docker-compose.yml" up -d
 }
 
 # ── Health check with retry ───────────────────────────────────────────────────
 
 health_check() {
+    section "Health check"
     info "Waiting for backend to become healthy at ${HEALTH_URL}..."
     local attempt=0
     while (( attempt < MAX_RETRIES )); do
@@ -114,10 +136,15 @@ health_check() {
 
 cd "$REPO_ROOT"
 
+clear
 duck_say "Deploying Email Client 🚀"
 
+section "Preflight checks"
 check_deps
+section "Environment setup"
 setup_env
+section "Port selection"
+select_backend_port
 build_and_start
 health_check
 
@@ -125,10 +152,11 @@ echo ""
 duck_say "Deployment complete! 🦆"
 echo -e "${BOLD}"
 echo "  Frontend : http://localhost:3000"
-echo "  Backend  : http://localhost:5000"
+echo "  Backend  : http://localhost:${BACKEND_PORT}"
 echo ""
 echo "  Useful commands:"
 echo "    make logs          — follow logs"
 echo "    make down          — stop services"
+echo "    make uninstall     — remove local deployment"
 echo "    make check-update  — check for updates"
 echo -e "${RESET}"
