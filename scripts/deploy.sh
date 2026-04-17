@@ -95,8 +95,11 @@ setup_env() {
 }
 
 select_backend_port() {
+    if [ ! -f "$PORT_SCANNER" ]; then
+        error "Port scanner script not found: ${PORT_SCANNER}"
+    fi
     if [ ! -x "$PORT_SCANNER" ]; then
-        error "Port scanner script not found or not executable: ${PORT_SCANNER}. Run: chmod +x ${PORT_SCANNER}"
+        error "Port scanner script is not executable: ${PORT_SCANNER}. Run: chmod +x ${PORT_SCANNER}"
     fi
     BACKEND_PORT="$("$PORT_SCANNER")"
     HEALTH_URL="http://localhost:${BACKEND_PORT}/api/health"

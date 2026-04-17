@@ -14,7 +14,7 @@ ensure_env_file() {
 
 current_configured_port() {
     local configured
-    configured=$(grep -E '^BACKEND_PORT=' "$ENV_FILE" 2>/dev/null | tail -n1 | cut -d'=' -f2- || true)
+    configured=$(grep -E '^BACKEND_PORT=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d'=' -f2- || true)
     if [[ "$configured" =~ ^[0-9]+$ ]] && [ "$configured" -ge 1 ] && [ "$configured" -le 65535 ]; then
         echo "$configured"
     else
@@ -25,7 +25,7 @@ current_configured_port() {
 is_port_in_use() {
     local port="$1"
     if command -v ss >/dev/null 2>&1; then
-        ss -ltnH "( sport = :${port} )" 2>/dev/null | grep -q .
+        ss -ltnH "sport = :${port}" 2>/dev/null | grep -q .
         return
     fi
 
@@ -50,8 +50,10 @@ persist_backend_port() {
         awk -v port="$port" '
             BEGIN { updated=0 }
             /^BACKEND_PORT=/ {
-                print "BACKEND_PORT=" port
-                updated=1
+                if (!updated) {
+                    print "BACKEND_PORT=" port
+                    updated=1
+                }
                 next
             }
             { print }
