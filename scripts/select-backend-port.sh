@@ -45,7 +45,23 @@ is_port_in_use() {
 persist_backend_port() {
     local port="$1"
     if grep -qE '^BACKEND_PORT=' "$ENV_FILE"; then
-        sed -i "s/^BACKEND_PORT=.*/BACKEND_PORT=${port}/" "$ENV_FILE"
+        local tmp_file
+        tmp_file="$(mktemp)"
+        awk -v port="$port" '
+            BEGIN { updated=0 }
+            /^BACKEND_PORT=/ {
+                print "BACKEND_PORT=" port
+                updated=1
+                next
+            }
+            { print }
+            END {
+                if (!updated) {
+                    print "BACKEND_PORT=" port
+                }
+            }
+        ' "$ENV_FILE" > "$tmp_file"
+        mv "$tmp_file" "$ENV_FILE"
     else
         printf '\nBACKEND_PORT=%s\n' "$port" >> "$ENV_FILE"
     fi
@@ -66,7 +82,7 @@ main() {
     done
 
     if [ "$selected_port" -gt "$MAX_PORT" ]; then
-        echo "No free backend port found in range ${start_port}-${MAX_PORT}." >&2
+        echo "No free backend host port found in range ${start_port}-${MAX_PORT}." >&2
         exit 1
     fi
 
