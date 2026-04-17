@@ -20,6 +20,7 @@ FRONTEND_PORT=3000
 HEALTH_URL=""
 MAX_RETRIES=12
 RETRY_INTERVAL=5
+MAX_PORT=65535
 
 # Determine compose command (plugin preferred, standalone fallback)
 if docker compose version &>/dev/null; then
@@ -153,8 +154,8 @@ prompt_port() {
             entered="${entered:-$default_port}"
         fi
 
-        if ! [[ "$entered" =~ ^[0-9]+$ ]] || [ "$entered" -lt 1 ] || [ "$entered" -gt 65535 ]; then
-            warn "Invalid ${label} port '${entered}'. Please choose a value between 1 and 65535."
+        if ! [[ "$entered" =~ ^[0-9]+$ ]] || [ "$entered" -lt 1 ] || [ "$entered" -gt "$MAX_PORT" ]; then
+            warn "Invalid ${label} port '${entered}'. Please choose a value between 1 and ${MAX_PORT}."
             continue
         fi
 

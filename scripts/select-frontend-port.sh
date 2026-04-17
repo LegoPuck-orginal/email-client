@@ -15,7 +15,7 @@ ensure_env_file() {
 current_configured_port() {
     local configured
     configured=$(grep -E '^FRONTEND_PORT=' "$ENV_FILE" 2>/dev/null | head -n1 | cut -d'=' -f2- || true)
-    if [[ "$configured" =~ ^[0-9]+$ ]] && [ "$configured" -ge 1 ] && [ "$configured" -le 65535 ]; then
+    if [[ "$configured" =~ ^[0-9]+$ ]] && [ "$configured" -ge 1 ] && [ "$configured" -le "$MAX_PORT" ]; then
         echo "$configured"
     else
         echo "$DEFAULT_PORT"
