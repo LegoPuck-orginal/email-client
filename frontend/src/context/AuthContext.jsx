@@ -3,6 +3,14 @@ import api from '../services/api.js'
 
 const AuthContext = createContext(null)
 
+function getDebugErrorContext(error) {
+  return {
+    message: error?.message,
+    status: error?.response?.status,
+    apiError: error?.response?.data?.error || error?.response?.data?.message,
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(() => localStorage.getItem('auth_token'))
@@ -52,7 +60,7 @@ export function AuthProvider({ children }) {
         }
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.debug('Failed to restore session:', error)
+          console.debug('Failed to restore session:', getDebugErrorContext(error))
         }
         if (isMounted) {
           clearSession()
@@ -90,7 +98,7 @@ export function AuthProvider({ children }) {
       await api.post('/auth/logout')
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.debug('Logout request failed:', error)
+        console.debug('Logout request failed:', getDebugErrorContext(error))
       }
     } finally {
       clearSession()
