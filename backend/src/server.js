@@ -19,13 +19,65 @@ const VERSION = process.env.CURRENT_VERSION || '1.0.0';
 app.use(helmet());
 
 // CORS
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
+const frontendPort = process.env.FRONTEND_PORT || '3000';
+const configuredOrigins = [
+  process.env.FRONTEND_URL?.trim(),
+  ...(process.env.FRONTEND_URLS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+].filter(Boolean);
+const defaultOrigins = [
+  `http://localhost:${frontendPort}`,
+  `http://127.0.0.1:${frontendPort}`,
+  `https://localhost:${frontendPort}`,
+  `https://127.0.0.1:${frontendPort}`,
 ];
+const parseOrigin = (value) => {
+  try {
+    return new URL(value);
+  } catch (_err) {
+    return null;
+  }
+};
+const allowedOrigins = new Set(
+  [...defaultOrigins, ...configuredOrigins]
+    .map((origin) => parseOrigin(origin)?.origin)
+    .filter(Boolean)
+);
+const isPrivateIpv4 = (hostname) => {
+  const parts = hostname.split('.');
+  if (parts.length !== 4 || parts.some((part) => !/^\d+$/.test(part))) {
+    return false;
+  }
+  const octets = parts.map((part) => Number(part));
+  if (octets.some((value) => value > 255)) {
+    return false;
+  }
+  return (
+    octets[0] === 10 ||
+    (octets[0] === 192 && octets[1] === 168) ||
+    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+  );
+};
+const isAllowedPrivateNetworkOrigin = (parsedOrigin) => {
+  if (!parsedOrigin || !['http:', 'https:'].includes(parsedOrigin.protocol)) {
+    return false;
+  }
+  const resolvedPort =
+    parsedOrigin.port === '' ? (parsedOrigin.protocol === 'https:' ? '443' : '80') : parsedOrigin.port;
+  return isPrivateIpv4(parsedOrigin.hostname) && resolvedPort === frontendPort;
+};
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const parsedOrigin = parseOrigin(origin);
+      const normalizedOrigin = parsedOrigin?.origin;
+      if (
+        !origin ||
+        (normalizedOrigin && allowedOrigins.has(normalizedOrigin)) ||
+        isAllowedPrivateNetworkOrigin(parsedOrigin)
+      ) {
         callback(null, true);
       } else {
         callback(new Error(`CORS policy: origin ${origin} not allowed`));
