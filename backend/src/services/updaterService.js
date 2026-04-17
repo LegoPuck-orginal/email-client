@@ -112,11 +112,17 @@ async function applyUpdate(tarballPath) {
   const srcDir = path.resolve(cwd, 'src');
   const extractDir = path.resolve(cwd, 'update-extract');
 
-  // Validate paths are within cwd to prevent path traversal
-  for (const p of [backupDir, srcDir, extractDir, tarballPath]) {
-    if (!p.startsWith(cwd)) {
+  // Validate paths are within cwd to prevent path traversal.
+  // Use path.resolve to normalize before comparing (handles symlinks on case-sensitive FS).
+  const normalizedCwd = path.resolve(cwd) + path.sep;
+  const resolvedTarball = path.resolve(tarballPath);
+  for (const p of [backupDir, srcDir, extractDir]) {
+    if (!path.resolve(p).startsWith(normalizedCwd)) {
       throw new Error(`Path traversal detected: ${p}`);
     }
+  }
+  if (!resolvedTarball.startsWith(normalizedCwd)) {
+    throw new Error(`Tarball path traversal detected: ${resolvedTarball}`);
   }
 
   if (fs.existsSync(srcDir)) {

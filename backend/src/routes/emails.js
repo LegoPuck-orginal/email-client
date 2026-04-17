@@ -1,5 +1,6 @@
 const express = require('express');
 const { Op } = require('sequelize');
+const rateLimit = require('express-rate-limit');
 const { body, query, param, validationResult } = require('express-validator');
 const { Email, EmailAccount } = require('../models');
 const { verifyToken } = require('../middleware/auth');
@@ -8,7 +9,16 @@ const { sendEmail } = require('../services/smtpService');
 
 const router = express.Router();
 
-// All email routes require authentication
+const emailsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+// All email routes require authentication and rate limiting
+router.use(emailsLimiter);
 router.use(verifyToken);
 
 // GET /api/emails/folders
@@ -135,12 +145,15 @@ router.post(
       const { to, subject, body: emailBody, cc, bcc, folder, isDraft } = req.body;
       const targetFolder = folder || (isDraft ? 'DRAFTS' : 'SENT');
 
+      let senderEmail = req.user.email;
+
       if (!isDraft) {
         const account = await EmailAccount.findOne({
           where: { userId: req.userId, isDefault: true },
         }) || await EmailAccount.findOne({ where: { userId: req.userId } });
 
         if (account) {
+          senderEmail = account.email;
           await sendEmail(account, {
             from: account.email,
             to,
@@ -156,7 +169,7 @@ router.post(
         userId: req.userId,
         folder: targetFolder,
         subject: subject || '(No Subject)',
-        from: req.user.email,
+        from: senderEmail,
         to,
         cc: cc || null,
         bcc: bcc || null,

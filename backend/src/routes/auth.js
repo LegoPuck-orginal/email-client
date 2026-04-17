@@ -15,6 +15,14 @@ const authLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' },
 });
 
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
 const generateToken = (userId) => {
   const secret = process.env.JWT_SECRET;
   if (!secret && process.env.NODE_ENV === 'production') {
@@ -115,7 +123,7 @@ router.post(
 );
 
 // GET /api/auth/me
-router.get('/me', verifyToken, async (req, res) => {
+router.get('/me', generalLimiter, verifyToken, async (req, res) => {
   try {
     return res.status(200).json({
       user: {
@@ -133,7 +141,7 @@ router.get('/me', verifyToken, async (req, res) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', verifyToken, (req, res) => {
+router.post('/logout', generalLimiter, verifyToken, (req, res) => {
   return res.status(200).json({ message: 'Logged out successfully.' });
 });
 
