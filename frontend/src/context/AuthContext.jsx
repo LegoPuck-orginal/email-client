@@ -47,7 +47,10 @@ export function AuthProvider({ children }) {
         } else {
           localStorage.removeItem('auth_user')
         }
-      } catch (_error) {
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.debug('Failed to restore session:', error)
+        }
         clearSession()
       } finally {
         setLoading(false)
@@ -72,8 +75,10 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       await api.post('/auth/logout')
-    } catch (_error) {
-      // Ignore logout request failures and clear local session anyway.
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.debug('Logout request failed:', error)
+      }
     } finally {
       clearSession()
     }
