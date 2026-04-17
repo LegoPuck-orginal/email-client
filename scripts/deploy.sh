@@ -15,6 +15,16 @@ HEALTH_URL="http://localhost:5000/api/health"
 MAX_RETRIES=12
 RETRY_INTERVAL=5
 
+# Determine compose command (plugin preferred, standalone fallback)
+if docker compose version &>/dev/null 2>&1; then
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &>/dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
+    echo -e "${RED}[ERROR] Neither 'docker compose' nor 'docker-compose' found. Install Docker ≥ 24.${RESET}" >&2
+    exit 1
+fi
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 info()    { echo -e "${CYAN}[INFO]  $*${RESET}"; }
@@ -40,7 +50,7 @@ check_deps() {
     info "Checking dependencies..."
     local missing=()
 
-    for cmd in docker docker-compose node npm; do
+    for cmd in docker node npm; do
         if ! command -v "$cmd" &>/dev/null; then
             missing+=("$cmd")
         else
@@ -51,6 +61,8 @@ check_deps() {
     if [ ${#missing[@]} -gt 0 ]; then
         error "Missing required tools: ${missing[*]}. Please install them and retry."
     fi
+
+    success "Using compose command: ${COMPOSE_CMD}"
 
     # Verify Docker daemon is reachable
     if ! docker info &>/dev/null; then
@@ -75,10 +87,10 @@ setup_env() {
 
 build_and_start() {
     info "Building Docker images..."
-    docker-compose -f "${REPO_ROOT}/docker-compose.yml" build
+    $COMPOSE_CMD -f "${REPO_ROOT}/docker-compose.yml" build
 
     info "Starting services..."
-    docker-compose -f "${REPO_ROOT}/docker-compose.yml" up -d
+    $COMPOSE_CMD -f "${REPO_ROOT}/docker-compose.yml" up -d
 }
 
 # ── Health check with retry ───────────────────────────────────────────────────
@@ -95,7 +107,7 @@ health_check() {
         info "Attempt ${attempt}/${MAX_RETRIES} — retrying in ${RETRY_INTERVAL}s..."
         sleep "$RETRY_INTERVAL"
     done
-    error "Backend did not become healthy after $(( MAX_RETRIES * RETRY_INTERVAL ))s. Check logs: docker-compose logs backend"
+    error "Backend did not become healthy after $(( MAX_RETRIES * RETRY_INTERVAL ))s. Check logs: ${COMPOSE_CMD} logs backend"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
