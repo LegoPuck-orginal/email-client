@@ -1,6 +1,9 @@
 # 🦆 Email Client — Makefile
 # Run `make help` to see all available commands.
 
+# Support both the Compose plugin (Docker ≥ 24) and the standalone binary.
+COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || (docker-compose version > /dev/null 2>&1 && echo "docker-compose" || (echo "ERROR: Neither 'docker compose' nor 'docker-compose' found. Install Docker >= 24." >&2; exit 1)))
+
 .PHONY: build up down restart logs clean check-update update \
         apt-build apt-install apt-check apt-update \
         duck-demo shell-backend shell-frontend help
@@ -9,27 +12,27 @@
 
 # Build all Docker images
 build:
-	docker-compose build
+	$(COMPOSE) build
 
 # Start all services in the background
 up:
-	docker-compose up -d
+	$(COMPOSE) up -d
 
 # Stop all services
 down:
-	docker-compose down
+	$(COMPOSE) down
 
 # Restart all services
 restart:
-	docker-compose restart
+	$(COMPOSE) restart
 
 # Follow logs for all services (Ctrl-C to exit)
 logs:
-	docker-compose logs -f
+	$(COMPOSE) logs -f
 
 # Stop services, remove volumes and all images (full reset)
 clean:
-	docker-compose down -v --rmi all
+	$(COMPOSE) down -v --rmi all
 
 ## ── Application updates ──────────────────────────────────────────────────────
 
@@ -69,11 +72,11 @@ duck-demo:
 
 # Open a shell inside the running backend container
 shell-backend:
-	docker-compose exec backend sh
+	$(COMPOSE) exec backend sh
 
 # Open a shell inside the running frontend container
 shell-frontend:
-	docker-compose exec frontend sh
+	$(COMPOSE) exec frontend sh
 
 ## ── Help ─────────────────────────────────────────────────────────────────────
 
