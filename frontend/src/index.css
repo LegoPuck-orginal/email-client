@@ -249,6 +249,15 @@ input:focus, textarea:focus {
   margin-bottom: 0.5rem;
 }
 
+.auth-success {
+  background: #e6f4ea;
+  color: #137333;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
 .auth-footer {
   margin-top: 1.5rem;
   text-align: center;

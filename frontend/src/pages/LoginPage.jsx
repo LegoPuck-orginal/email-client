@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Mail, Lock, LogIn } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { getApiErrorMessage } from '../utils/authErrors.js'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -10,6 +11,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const justRegistered = !!location.state?.registered
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -17,9 +20,9 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/inbox')
+      navigate('/inbox', { replace: true })
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.')
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials.'))
     } finally {
       setLoading(false)
     }
@@ -33,6 +36,7 @@ export default function LoginPage() {
           <h1>Email Client</h1>
           <p>Sign in to your account</p>
         </div>
+        {justRegistered && <div className="auth-success">Account created successfully. Please sign in.</div>}
         {error && <div className="auth-error">{error}</div>}
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

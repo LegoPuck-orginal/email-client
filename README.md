@@ -173,6 +173,7 @@ Frontend dev server runs on http://localhost:5173 and proxies `/api` to the back
 
 | Method             | Guide                                  |
 |--------------------|----------------------------------------|
+| Project Wiki       | [WIKI.md](WIKI.md)                     |
 | Docker Compose     | This README (Quick Start above)        |
 | Debian .deb package| [APT-INSTALLATION.md](APT-INSTALLATION.md) |
 | Duck Installer     | [DUCK-INSTALLER.md](DUCK-INSTALLER.md) |
