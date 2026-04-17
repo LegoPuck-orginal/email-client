@@ -52,7 +52,7 @@ make up
 
 The app will be available at:
 - **Frontend** → http://localhost:3000
-- **Backend API** → http://localhost:5000/api
+- **Backend API** → http://localhost:5000/api (or next free port if 5000 is occupied)
 
 ---
 
@@ -131,6 +131,7 @@ Persistent data is stored in `./backend/data/` (mounted as a Docker volume).
 make build           # Build all Docker images
 make up              # Start services (detached)
 make down            # Stop services
+make uninstall       # Remove services, volumes and orphans
 make restart         # Restart services
 make logs            # Follow logs (Ctrl-C to exit)
 make clean           # Full reset (removes volumes + images)
@@ -143,6 +144,7 @@ make apt-install     # Install the .deb package
 make apt-check       # Check APT package status
 make apt-update      # Trigger APT update via API
 
+make install         # Run duck installer
 make duck-demo       # Show duck animations 🦆
 make shell-backend   # Shell into backend container
 make shell-frontend  # Shell into frontend container
