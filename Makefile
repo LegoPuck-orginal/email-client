@@ -2,7 +2,7 @@
 # Run `make help` to see all available commands.
 
 # Support both the Compose plugin (Docker ≥ 24) and the standalone binary.
-COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compose" || (docker-compose version > /dev/null 2>&1 && echo "docker-compose" || (echo "ERROR: Neither 'docker compose' nor 'docker-compose' found. Install Docker >= 24." >&2; exit 1)))
 
 .PHONY: build up down restart logs clean check-update update \
         apt-build apt-install apt-check apt-update \

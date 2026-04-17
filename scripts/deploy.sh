@@ -16,7 +16,7 @@ MAX_RETRIES=12
 RETRY_INTERVAL=5
 
 # Determine compose command (plugin preferred, standalone fallback)
-if docker compose version &>/dev/null 2>&1; then
+if docker compose version &>/dev/null; then
     COMPOSE_CMD="docker compose"
 elif command -v docker-compose &>/dev/null; then
     COMPOSE_CMD="docker-compose"
