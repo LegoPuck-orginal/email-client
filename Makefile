@@ -18,8 +18,10 @@ build:
 up:
 	@set -e; \
 	BACKEND_PORT="$$(scripts/select-backend-port.sh)"; \
+	FRONTEND_PORT="$$(scripts/select-frontend-port.sh)"; \
 	echo "🦆 Using backend host port $$BACKEND_PORT"; \
-	BACKEND_PORT="$$BACKEND_PORT" $(COMPOSE) up -d
+	echo "🦆 Using frontend host port $$FRONTEND_PORT"; \
+	BACKEND_PORT="$$BACKEND_PORT" FRONTEND_PORT="$$FRONTEND_PORT" $(COMPOSE) up -d
 
 # Stop all services
 down:
@@ -97,7 +99,7 @@ help:
 	@echo ""
 	@echo "  Docker"
 	@echo "    make build          Build all Docker images"
-	@echo "    make up             Start all services (detached)"
+	@echo "    make up             Start all services (detached, auto-selects free host ports)"
 	@echo "    make down           Stop all services"
 	@echo "    make uninstall      Stop and remove services + volumes"
 	@echo "    make restart        Restart all services"

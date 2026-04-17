@@ -51,8 +51,8 @@ make up
 ```
 
 The app will be available at:
-- **Frontend** → http://localhost:3000
-- **Backend API** → http://localhost:5000/api (or next free port if 5000 is occupied)
+- **Frontend** → `http://localhost:<frontend-port>` (default `3000`, auto-adjusted if busy)
+- **Backend API** → `http://localhost:<backend-port>/api` (default `5000`, auto-adjusted if busy)
 
 ---
 
@@ -67,6 +67,8 @@ See [`.env.example`](.env.example) for all variables. Key ones:
 | `JWT_SECRET`     | Secret for signing JWTs (**change this!**)  | —                          |
 | `ENCRYPTION_KEY` | 32-char hex key for email credential crypto | —                          |
 | `DB_PATH`        | Path to SQLite database file                | `./data/email-client.db`   |
+| `FRONTEND_PORT`  | Docker host port mapped to frontend (nginx) | `3000`                     |
+| `BACKEND_PORT`   | Docker host port mapped to backend API      | `5000`                     |
 | `FRONTEND_URL`   | Allowed CORS origin                         | `http://localhost:3000`    |
 | `GITHUB_OWNER`   | GitHub owner for auto-updater               | `LegoPuck-orginal`         |
 | `GITHUB_REPO`    | GitHub repo for auto-updater                | `email-client`             |
@@ -114,7 +116,7 @@ The project uses a two-service Compose stack:
 ```
 ┌─────────────────────────────┐      ┌──────────────────────────────┐
 │  frontend (nginx:alpine)    │      │  backend (node:18-alpine)    │
-│  port 3000 → 80             │─────▶│  port 5000                   │
+│  port FRONTEND_PORT → 80    │─────▶│  port 5000                   │
 │  serves React SPA           │      │  REST API + IMAP/SMTP        │
 │  proxies /api → backend     │      │  SQLite database             │
 └─────────────────────────────┘      └──────────────────────────────┘
@@ -129,7 +131,7 @@ Persistent data is stored in `./backend/data/` (mounted as a Docker volume).
 
 ```bash
 make build           # Build all Docker images
-make up              # Start services (detached)
+make up              # Start services (detached, auto-selects free host ports)
 make down            # Stop services
 make uninstall       # Remove services, volumes and orphans
 make restart         # Restart services
