@@ -16,7 +16,7 @@ build:
 
 # Start all services in the background
 up:
-	@BACKEND_PORT="$$(bash scripts/select-backend-port.sh)"; \
+	@BACKEND_PORT="$$(scripts/select-backend-port.sh)"; \
 	echo "🦆 Using backend host port $$BACKEND_PORT"; \
 	BACKEND_PORT="$$BACKEND_PORT" $(COMPOSE) up -d
 

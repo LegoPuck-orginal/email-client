@@ -4,7 +4,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${REPO_ROOT}/.env"
 DEFAULT_PORT="${1:-5000}"
-MAX_PORT=65000
+MAX_PORT=65535
 
 ensure_env_file() {
     if [ ! -f "$ENV_FILE" ]; then
