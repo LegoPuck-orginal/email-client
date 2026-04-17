@@ -19,13 +19,50 @@ const VERSION = process.env.CURRENT_VERSION || '1.0.0';
 app.use(helmet());
 
 // CORS
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-];
+const frontendPort = String(process.env.FRONTEND_PORT || '3000');
+const configuredOrigins = [process.env.FRONTEND_URL, process.env.FRONTEND_URLS]
+  .filter(Boolean)
+  .flatMap((value) => value.split(','))
+  .map((value) => value.trim())
+  .filter(Boolean);
+const defaultOrigins = [`http://localhost:${frontendPort}`, `http://127.0.0.1:${frontendPort}`];
+const normalizeOrigin = (value) => {
+  try {
+    return new URL(value).origin;
+  } catch (_err) {
+    return null;
+  }
+};
+const allowedOrigins = new Set(
+  [...defaultOrigins, ...configuredOrigins]
+    .map((origin) => normalizeOrigin(origin))
+    .filter(Boolean)
+);
+const isPrivateIpv4 = (hostname) =>
+  /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})$/.test(
+    hostname
+  );
+const isAllowedPrivateNetworkOrigin = (origin) => {
+  try {
+    const parsed = new URL(origin);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return false;
+    }
+    const resolvedPort = parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+    return isPrivateIpv4(parsed.hostname) && resolvedPort === frontendPort;
+  } catch (_err) {
+    return false;
+  }
+};
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const normalizedOrigin = normalizeOrigin(origin);
+      if (
+        !origin ||
+        (normalizedOrigin && allowedOrigins.has(normalizedOrigin)) ||
+        isAllowedPrivateNetworkOrigin(origin)
+      ) {
         callback(null, true);
       } else {
         callback(new Error(`CORS policy: origin ${origin} not allowed`));

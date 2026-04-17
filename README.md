@@ -69,7 +69,8 @@ See [`.env.example`](.env.example) for all variables. Key ones:
 | `DB_PATH`        | Path to SQLite database file                | `./data/email-client.db`   |
 | `FRONTEND_PORT`  | Docker host port mapped to frontend (nginx) | `3000`                     |
 | `BACKEND_PORT`   | Docker host port mapped to backend API      | `5000`                     |
-| `FRONTEND_URL`   | Allowed CORS origin                         | `http://localhost:3000`    |
+| `FRONTEND_URL`   | Primary allowed CORS origin                 | `http://localhost:3000`    |
+| `FRONTEND_URLS`  | Optional extra comma-separated CORS origins | —                          |
 | `GITHUB_OWNER`   | GitHub owner for auto-updater               | `LegoPuck-orginal`         |
 | `GITHUB_REPO`    | GitHub repo for auto-updater                | `email-client`             |
 
