@@ -1,3 +1,9 @@
+/**
+ * Extracts a user-friendly message from known API error response formats.
+ * @param {any} error Axios-style error object that may include response.data.
+ * @param {string} fallbackMessage Message used when no API-specific message exists.
+ * @returns {string} Best available error message for display.
+ */
 export function getApiErrorMessage(error, fallbackMessage) {
   const data = error?.response?.data
 
