@@ -13,8 +13,10 @@ BOLD='\033[1m'
 RESET='\033[0m'
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PORT_SCANNER="${REPO_ROOT}/scripts/select-backend-port.sh"
+BACKEND_PORT_SCANNER="${REPO_ROOT}/scripts/select-backend-port.sh"
+FRONTEND_PORT_SCANNER="${REPO_ROOT}/scripts/select-frontend-port.sh"
 BACKEND_PORT=5000
+FRONTEND_PORT=3000
 HEALTH_URL=""
 MAX_RETRIES=12
 RETRY_INTERVAL=5
@@ -94,16 +96,122 @@ setup_env() {
     fi
 }
 
+is_port_in_use() {
+    local port="$1"
+    if command -v ss >/dev/null 2>&1; then
+        ss -ltnH "sport = :${port}" 2>/dev/null | grep -q .
+        return
+    fi
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -iTCP:"$port" -sTCP:LISTEN -t >/dev/null 2>&1
+        return
+    fi
+    if command -v netstat >/dev/null 2>&1; then
+        netstat -ltn 2>/dev/null | awk '{print $4}' | grep -Eq "(^|:)${port}$"
+        return
+    fi
+    return 1
+}
+
+persist_env_value() {
+    local key="$1"
+    local value="$2"
+    local env_file="${REPO_ROOT}/.env"
+    local tmp_file
+    tmp_file="$(mktemp)"
+
+    awk -v key="$key" -v value="$value" '
+        BEGIN { updated=0 }
+        $0 ~ ("^" key "=") {
+            if (!updated) {
+                print key "=" value
+                updated=1
+            }
+            next
+        }
+        { print }
+        END {
+            if (!updated) {
+                print key "=" value
+            }
+        }
+    ' "$env_file" > "$tmp_file"
+
+    mv "$tmp_file" "$env_file"
+}
+
+prompt_port() {
+    local label="$1"
+    local default_port="$2"
+    local entered=""
+
+    while true; do
+        if command -v whiptail >/dev/null 2>&1; then
+            entered="$(whiptail --title "Email Client Installer" --inputbox "Choose ${label} host port:" 10 60 "$default_port" 3>&1 1>&2 2>&3)" || error "Installation cancelled by user."
+        else
+            read -r -p "Choose ${label} host port [${default_port}]: " entered
+            entered="${entered:-$default_port}"
+        fi
+
+        if ! [[ "$entered" =~ ^[0-9]+$ ]] || [ "$entered" -lt 1 ] || [ "$entered" -gt 65535 ]; then
+            warn "Invalid ${label} port '${entered}'. Please choose a value between 1 and 65535."
+            continue
+        fi
+
+        if is_port_in_use "$entered"; then
+            warn "Port ${entered} is already in use. Choose another ${label} port."
+            continue
+        fi
+
+        echo "$entered"
+        return 0
+    done
+}
+
 select_backend_port() {
-    if [ ! -f "$PORT_SCANNER" ]; then
-        error "Port scanner script not found: ${PORT_SCANNER}"
+    if [ ! -f "$BACKEND_PORT_SCANNER" ]; then
+        error "Backend port scanner script not found: ${BACKEND_PORT_SCANNER}"
     fi
-    if [ ! -x "$PORT_SCANNER" ]; then
-        error "Port scanner script is not executable: ${PORT_SCANNER}. Run: chmod +x ${PORT_SCANNER}"
+    if [ ! -x "$BACKEND_PORT_SCANNER" ]; then
+        error "Backend port scanner script is not executable: ${BACKEND_PORT_SCANNER}. Run: chmod +x ${BACKEND_PORT_SCANNER}"
     fi
-    BACKEND_PORT="$("$PORT_SCANNER")"
+    BACKEND_PORT="$("$BACKEND_PORT_SCANNER")"
+}
+
+select_frontend_port() {
+    if [ ! -f "$FRONTEND_PORT_SCANNER" ]; then
+        error "Frontend port scanner script not found: ${FRONTEND_PORT_SCANNER}"
+    fi
+    if [ ! -x "$FRONTEND_PORT_SCANNER" ]; then
+        error "Frontend port scanner script is not executable: ${FRONTEND_PORT_SCANNER}. Run: chmod +x ${FRONTEND_PORT_SCANNER}"
+    fi
+    FRONTEND_PORT="$("$FRONTEND_PORT_SCANNER")"
+}
+
+select_ports() {
+    select_backend_port
+    select_frontend_port
+
+    if [ -t 0 ] && [ -t 1 ]; then
+        info "Interactive installer detected — you can choose custom host ports."
+        BACKEND_PORT="$(prompt_port "backend API" "$BACKEND_PORT")"
+        while true; do
+            FRONTEND_PORT="$(prompt_port "frontend UI" "$FRONTEND_PORT")"
+            if [ "$FRONTEND_PORT" = "$BACKEND_PORT" ]; then
+                warn "Frontend and backend ports must be different."
+                continue
+            fi
+            break
+        done
+    fi
+
+    persist_env_value "BACKEND_PORT" "$BACKEND_PORT"
+    persist_env_value "FRONTEND_PORT" "$FRONTEND_PORT"
+    persist_env_value "FRONTEND_URL" "http://localhost:${FRONTEND_PORT}"
+
     HEALTH_URL="http://localhost:${BACKEND_PORT}/api/health"
     success "Selected backend host port: ${BACKEND_PORT}"
+    success "Selected frontend host port: ${FRONTEND_PORT}"
 }
 
 # ── Docker build & up ─────────────────────────────────────────────────────────
@@ -114,7 +222,7 @@ build_and_start() {
     $COMPOSE_CMD -f "${REPO_ROOT}/docker-compose.yml" build
 
     info "Starting services..."
-    BACKEND_PORT="${BACKEND_PORT}" $COMPOSE_CMD -f "${REPO_ROOT}/docker-compose.yml" up -d
+    BACKEND_PORT="${BACKEND_PORT}" FRONTEND_PORT="${FRONTEND_PORT}" $COMPOSE_CMD -f "${REPO_ROOT}/docker-compose.yml" up -d
 }
 
 # ── Health check with retry ───────────────────────────────────────────────────
@@ -147,14 +255,14 @@ check_deps
 section "Environment setup"
 setup_env
 section "Port selection"
-select_backend_port
+select_ports
 build_and_start
 health_check
 
 echo ""
 duck_say "Deployment complete! 🦆"
 echo -e "${BOLD}"
-echo "  Frontend : http://localhost:3000"
+echo "  Frontend : http://localhost:${FRONTEND_PORT}"
 echo "  Backend  : http://localhost:${BACKEND_PORT}"
 echo ""
 echo "  Useful commands:"
