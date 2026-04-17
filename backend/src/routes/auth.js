@@ -1,15 +1,28 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const { User } = require('../models');
 const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
 const generateToken = (userId) => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production.');
+  }
   return jwt.sign(
     { id: userId },
-    process.env.JWT_SECRET || 'fallback_secret',
+    secret || 'fallback_secret_dev_only',
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };
@@ -17,6 +30,7 @@ const generateToken = (userId) => {
 // POST /api/auth/register
 router.post(
   '/register',
+  authLimiter,
   [
     body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
@@ -58,6 +72,7 @@ router.post(
 // POST /api/auth/login
 router.post(
   '/login',
+  authLimiter,
   [
     body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required'),

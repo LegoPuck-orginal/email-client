@@ -14,7 +14,7 @@ function buildImapConfig(account) {
       host: account.imapHost,
       port: account.imapPort,
       tls: account.imapSecure,
-      tlsOptions: { rejectUnauthorized: false },
+      tlsOptions: { rejectUnauthorized: process.env.NODE_ENV === 'production' },
       authTimeout: 10000,
       connTimeout: 30000,
     },

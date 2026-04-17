@@ -1,12 +1,13 @@
 const express = require('express');
 const { checkForUpdates, downloadUpdate, applyUpdate } = require('../services/updaterService');
+const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 
 const CURRENT_VERSION = process.env.CURRENT_VERSION || '1.0.0';
 
 // GET /api/updates/status
-router.get('/status', (req, res) => {
+router.get('/status', verifyToken, (req, res) => {
   return res.status(200).json({
     currentVersion: CURRENT_VERSION,
     repo: `${process.env.GITHUB_OWNER || 'LegoPuck-orginal'}/${process.env.GITHUB_REPO || 'email-client'}`,
@@ -16,7 +17,7 @@ router.get('/status', (req, res) => {
 });
 
 // POST /api/updates/check
-router.post('/check', async (req, res) => {
+router.post('/check', verifyToken, async (req, res) => {
   try {
     const updateInfo = await checkForUpdates();
     return res.status(200).json(updateInfo);
@@ -27,7 +28,7 @@ router.post('/check', async (req, res) => {
 });
 
 // POST /api/updates/auto-update
-router.post('/auto-update', async (req, res) => {
+router.post('/auto-update', verifyToken, async (req, res) => {
   try {
     const updateInfo = await checkForUpdates();
     if (!updateInfo.updateAvailable) {

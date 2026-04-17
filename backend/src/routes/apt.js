@@ -1,10 +1,11 @@
 const express = require('express');
 const { checkAptUpdates, applyAptUpdates } = require('../services/aptUpdaterService');
+const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 
 // GET /api/apt/check
-router.get('/check', async (req, res) => {
+router.get('/check', verifyToken, async (req, res) => {
   try {
     const result = await checkAptUpdates();
     return res.status(200).json(result);
@@ -15,7 +16,7 @@ router.get('/check', async (req, res) => {
 });
 
 // POST /api/apt/update
-router.post('/update', async (req, res) => {
+router.post('/update', verifyToken, async (req, res) => {
   try {
     const result = await applyAptUpdates();
     return res.status(200).json(result);

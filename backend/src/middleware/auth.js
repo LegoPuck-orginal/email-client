@@ -9,7 +9,11 @@ const verifyToken = async (req, res, next) => {
     }
 
     const token = authHeader.slice(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === 'production') {
+      return res.status(500).json({ error: 'Server misconfiguration.' });
+    }
+    const decoded = jwt.verify(token, secret || 'fallback_secret_dev_only');
 
     const user = await User.findByPk(decoded.id, {
       attributes: { exclude: ['password'] },

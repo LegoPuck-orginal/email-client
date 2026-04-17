@@ -1,7 +1,7 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'LegoPuck-orginal';
 const GITHUB_REPO = process.env.GITHUB_REPO || 'email-client';
@@ -107,13 +107,21 @@ function downloadUpdate(releaseUrl) {
  * @returns {Promise<object>}
  */
 async function applyUpdate(tarballPath) {
-  const backupDir = path.resolve(process.cwd(), `backup-${Date.now()}`);
-  const srcDir = path.resolve(process.cwd(), 'src');
-  const extractDir = path.resolve(process.cwd(), 'update-extract');
+  const cwd = process.cwd();
+  const backupDir = path.resolve(cwd, `backup-${Date.now()}`);
+  const srcDir = path.resolve(cwd, 'src');
+  const extractDir = path.resolve(cwd, 'update-extract');
+
+  // Validate paths are within cwd to prevent path traversal
+  for (const p of [backupDir, srcDir, extractDir, tarballPath]) {
+    if (!p.startsWith(cwd)) {
+      throw new Error(`Path traversal detected: ${p}`);
+    }
+  }
 
   if (fs.existsSync(srcDir)) {
     fs.mkdirSync(backupDir, { recursive: true });
-    execSync(`cp -r ${srcDir} ${backupDir}/src`);
+    fs.cpSync(srcDir, path.join(backupDir, 'src'), { recursive: true });
   }
 
   if (fs.existsSync(extractDir)) {
@@ -121,14 +129,20 @@ async function applyUpdate(tarballPath) {
   }
   fs.mkdirSync(extractDir, { recursive: true });
 
-  execSync(`tar -xzf ${tarballPath} -C ${extractDir} --strip-components=1`);
+  // Extract tarball using spawn with argument array (no shell injection risk)
+  const tar = spawnSync('tar', ['-xzf', tarballPath, '-C', extractDir, '--strip-components=1'], {
+    stdio: 'pipe',
+  });
+  if (tar.status !== 0) {
+    throw new Error(`tar extraction failed: ${tar.stderr ? tar.stderr.toString() : 'unknown error'}`);
+  }
 
   const extractedSrc = path.join(extractDir, 'backend', 'src');
   if (fs.existsSync(extractedSrc)) {
     if (fs.existsSync(srcDir)) {
       fs.rmSync(srcDir, { recursive: true, force: true });
     }
-    execSync(`cp -r ${extractedSrc} ${srcDir}`);
+    fs.cpSync(extractedSrc, srcDir, { recursive: true });
   }
 
   fs.rmSync(extractDir, { recursive: true, force: true });

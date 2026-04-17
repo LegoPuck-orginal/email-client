@@ -2,7 +2,13 @@ const { DataTypes } = require('sequelize');
 const crypto = require('crypto');
 const sequelize = require('../config/database');
 
-const ENCRYPTION_KEY = (process.env.ENCRYPTION_KEY || 'default_32_char_key_change_me!!').slice(0, 32).padEnd(32, '0');
+const ENCRYPTION_KEY = (() => {
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key && process.env.NODE_ENV === 'production') {
+    throw new Error('ENCRYPTION_KEY environment variable is required in production.');
+  }
+  return (key || 'default_32_char_key_change_me!!').slice(0, 32).padEnd(32, '0');
+})();
 const IV_LENGTH = 16;
 
 function encrypt(text) {

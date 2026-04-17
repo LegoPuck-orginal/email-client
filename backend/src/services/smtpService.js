@@ -15,7 +15,7 @@ function createTransport(account) {
       pass: account.password,
     },
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: process.env.NODE_ENV === 'production',
     },
   });
 }
