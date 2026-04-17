@@ -1,7 +1,7 @@
 import api from './api.js'
 
 export async function checkForUpdates() {
-  const res = await api.get('/updates/check')
+  const res = await api.post('/updates/check')
   return res.data
 }
 

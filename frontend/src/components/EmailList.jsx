@@ -44,7 +44,6 @@ export default function EmailList({
     setStarring(prev => ({ ...prev, [id]: true }))
     try {
       await updateEmail(id, { starred: !email.starred })
-      email.starred = !email.starred
       onRefresh()
     } catch {
       // ignore
