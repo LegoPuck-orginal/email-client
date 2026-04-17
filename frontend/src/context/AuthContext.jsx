@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
 import api from '../services/api.js'
 
 const AuthContext = createContext(null)
@@ -11,10 +10,8 @@ export function AuthProvider({ children }) {
 
   const applyToken = useCallback((t) => {
     if (t) {
-      axios.defaults.headers.common.Authorization = `Bearer ${t}`
       localStorage.setItem('auth_token', t)
     } else {
-      delete axios.defaults.headers.common.Authorization
       localStorage.removeItem('auth_token')
     }
   }, [])
@@ -27,10 +24,14 @@ export function AuthProvider({ children }) {
   }, [applyToken])
 
   useEffect(() => {
+    let isMounted = true
+
     async function restoreSession() {
       const storedToken = localStorage.getItem('auth_token')
       if (!storedToken) {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
         return
       }
 
@@ -39,8 +40,10 @@ export function AuthProvider({ children }) {
       try {
         const res = await api.get('/auth/me')
         const restoredUser = res.data?.user || null
-        setToken(storedToken)
-        setUser(restoredUser)
+        if (isMounted) {
+          setToken(storedToken)
+          setUser(restoredUser)
+        }
 
         if (restoredUser) {
           localStorage.setItem('auth_user', JSON.stringify(restoredUser))
@@ -51,13 +54,23 @@ export function AuthProvider({ children }) {
         if (import.meta.env.DEV) {
           console.debug('Failed to restore session:', error)
         }
-        clearSession()
+        if (isMounted) {
+          clearSession()
+        } else {
+          applyToken(null)
+          localStorage.removeItem('auth_user')
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     restoreSession()
+    return () => {
+      isMounted = false
+    }
   }, [applyToken, clearSession])
 
   const login = useCallback(async (email, password) => {
